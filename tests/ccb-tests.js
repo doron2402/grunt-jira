@@ -8,71 +8,80 @@ function isNumeric(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
-describe.skip('when executing ccb', function() {
-  var result;
-  var jiraConfig = {
-    protocol: 'https',
-    host: 'opentable.atlassian.net',
-    port: 443,
-    // FIXME: need test user. sent an email to techtable - max
-    username: 'FIXME',
-    password: 'FIXME',
-    verbose: true,
-    version: '2',
-    // FIXME: need test project. sent an email to techtable - max
-    project_id: '19102',
-    ccb_issue_type: '3',
-    ccb_done_state: '11',
-    proxy: ''
-  };
-
-  var jira = new JiraApi(
-    jiraConfig.protocol,
-    jiraConfig.host,
-    jiraConfig.port,
-    jiraConfig.user,
-    jiraConfig.password,
-    jiraConfig.version,
-    jiraConfig.verbose,
-    jiraConfig.strictSSL
-  );
-
-  before(function(done) {
-    ccb({
-      jira: jiraConfig,
-      project: {
-        name: 'Search API v2 (node)',
-        custom_text: 'Search API v2 Manifest Step',
-        description: 'Search API v2 Manifest Step'
-      },
-      manifest: 'tests/data/manifest.json',
-      build_number: 'v0.0.350'
-    })
-    .then(function(res) {
-      result = res;
-      done();
-    })
-    .catch(function(err) {
-      done(err);
-    })
-    .done();
+describe('when executing ccb', function() {
+  // README: Add your jira username and password to grunt test as environment variables.
+  // e.g.
+  // JIRA_USERNAME=myusername JIRA_PASSWORD=mypassword grunt test
+  it('has valid jira credentials env variables', function() {
+    assert.equal(
+      typeof process.env.JIRA_USERNAME,
+      'string',
+      'must provide a jira username'
+    );
+    assert.equal(
+      typeof process.env.JIRA_PASSWORD,
+      'string',
+      'must provide a jira password'
+    );
   });
 
-  // FIXME: will need admin access to the board
-  // after(function(done) {
-  //   jira.deleteIssue(result.id, function(err, res) {
-  //     if (err) {
-  //       done(new Error('Unable to delete issue: ' + err.message));
-  //     } else {
-  //       done();
-  //     }
-  //   });
-  // });
+  describe('with valid jira credentials', function() {
+    this.timeout(10000);
 
+    var result;
+    var jiraConfig = {
+      protocol: 'https',
+      host: 'opentable.atlassian.net',
+      port: 443,
+      username: process.env.JIRA_USERNAME,
+      password: process.env.JIRA_PASSWORD,
+      verbose: true,
+      version: '2',
+      // README: this project id belongs to the integration test project
+      // https://opentable.atlassian.net/projects/INTT/issues/
+      project_id: '19200',
+      ccb_issue_type: '1',
+      ccb_done_state: '11',
+      proxy: ''
+    };
 
-  it('responds with a valid issue', function() {
-    assert.equal(typeof result, 'object');
-    assert.ok(isNumeric(result.id));
+    var jira = new JiraApi(
+      jiraConfig.protocol,
+      jiraConfig.host,
+      jiraConfig.port,
+      jiraConfig.user,
+      jiraConfig.password,
+      jiraConfig.version,
+      jiraConfig.verbose,
+      jiraConfig.strictSSL
+    );
+
+    before(function(done) {
+      ccb({
+        jira: jiraConfig,
+        project: {
+          name: 'Search API v2 (node)',
+          custom_text: 'Search API v2 Manifest Step',
+          description: 'Search API v2 Manifest Step'
+        },
+        manifest: process.cwd() + '/tests/data/manifest.json',
+        build_number: 'v0.0.350'
+      })
+      .then(function(res) {
+        result = JSON.parse(res);
+        done();
+      })
+      .catch(function(err) {
+        console.log('\n README: If you see an authentication error, you may need to add your credentials as environment variables. \n');
+        done(err);
+      })
+      .done();
+    });
+
+    it('responds with a valid issue', function() {
+      assert.ok(result instanceof Array);
+      assert.equal(result[0].filename, 'manifest.json');
+    });
   });
 });
 
